@@ -46,4 +46,3 @@ static const boolean midi_server_registered = false;
 #endif
 
 #endif
-

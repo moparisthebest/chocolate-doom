@@ -14,8 +14,6 @@
 // GNU General Public License for more details.
 //
 
-
-
 // HEADER FILES ------------------------------------------------------------
 
 #include <stdarg.h>
@@ -29,19 +27,18 @@
 #include "s_sound.h"
 #include "st_start.h"
 
-
 // MACROS ------------------------------------------------------------------
-#define ST_MAX_NOTCHES		32
-#define ST_NOTCH_WIDTH		16
-#define ST_NOTCH_HEIGHT		23
-#define ST_PROGRESS_X		64      // Start of notches x screen pos.
-#define ST_PROGRESS_Y		441     // Start of notches y screen pos.
+#define ST_MAX_NOTCHES 32
+#define ST_NOTCH_WIDTH 16
+#define ST_NOTCH_HEIGHT 23
+#define ST_PROGRESS_X 64  // Start of notches x screen pos.
+#define ST_PROGRESS_Y 441 // Start of notches y screen pos.
 
-#define ST_NETPROGRESS_X		288
-#define ST_NETPROGRESS_Y		32
-#define ST_NETNOTCH_WIDTH		8
-#define ST_NETNOTCH_HEIGHT		16
-#define ST_MAX_NETNOTCHES		8
+#define ST_NETPROGRESS_X 288
+#define ST_NETPROGRESS_Y 32
+#define ST_NETNOTCH_WIDTH 8
+#define ST_NETNOTCH_HEIGHT 16
+#define ST_MAX_NETNOTCHES 8
 
 byte *ST_LoadScreen(void);
 void ST_UpdateNotches(int notchPosition);
@@ -75,9 +72,7 @@ static const byte notchTable[] = {
     0x00, 0x00, 0x00, 0x00, 0x01, 0x80, 0x01, 0x80, 0x01, 0x80, 0x01, 0x80,
     0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0x80, 0x02, 0x40,
     0x0F, 0x90, 0x1B, 0x68, 0x3D, 0xB4, 0x1F, 0xF0, 0x1F, 0xF8, 0x1F, 0xF8,
-    0x10, 0x28, 0x08, 0x28, 0x29, 0x08, 0x07, 0xE8, 0x1C, 0x50
-};
-
+    0x10, 0x28, 0x08, 0x28, 0x29, 0x08, 0x07, 0xE8, 0x1C, 0x50};
 
 // Red Network Progress notches
 static const byte netnotchTable[] = {
@@ -95,12 +90,9 @@ static const byte netnotchTable[] = {
 
     // plane 3
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00
-};
+    0x00, 0x00, 0x00, 0x00};
 
 // CODE --------------------------------------------------------------------
-
-
 
 //--------------------------------------------------------------------------
 //
@@ -108,57 +100,50 @@ static const byte netnotchTable[] = {
 //
 //--------------------------------------------------------------------------
 
-
 //==========================================================================
 //
 // ST_Init - Do the startup screen
 //
 //==========================================================================
 
-void ST_Init(void)
-{
-    byte *pal;
-    byte *buffer;
-    
-    using_graphical_startup = false;
+void ST_Init(void) {
+  byte *pal;
+  byte *buffer;
 
-    if (graphical_startup && !debugmode && !testcontrols)
-    {
-        I_SetWindowTitleHR("Hexen startup - " PACKAGE_STRING);
+  using_graphical_startup = false;
 
-        // Set 640x480x16 mode
-        if (I_SetVideoModeHR())
-        {
-            using_graphical_startup = true;
-            I_InitWindowIcon();
+  if (graphical_startup && !debugmode && !testcontrols) {
+    I_SetWindowTitleHR("Hexen startup - " PACKAGE_STRING);
 
-            S_StartSongName("orb", true);
+    // Set 640x480x16 mode
+    if (I_SetVideoModeHR()) {
+      using_graphical_startup = true;
+      I_InitWindowIcon();
 
-            I_ClearScreenHR();
-            I_InitPaletteHR();
-            I_BlackPaletteHR();
+      S_StartSongName("orb", true);
 
-            // Load graphic
-            buffer = ST_LoadScreen();
-            pal = buffer;
-            bitmap = buffer + 16 * 3;
+      I_ClearScreenHR();
+      I_InitPaletteHR();
+      I_BlackPaletteHR();
 
-            I_SlamHR(bitmap);
-            I_FadeToPaletteHR(pal);
-            Z_Free(buffer);
-        }
+      // Load graphic
+      buffer = ST_LoadScreen();
+      pal = buffer;
+      bitmap = buffer + 16 * 3;
+
+      I_SlamHR(bitmap);
+      I_FadeToPaletteHR(pal);
+      Z_Free(buffer);
     }
+  }
 }
 
-void ST_Done(void)
-{
-    if (using_graphical_startup)
-    {
-        I_ClearScreenHR();
-        I_UnsetVideoModeHR();
-    }
+void ST_Done(void) {
+  if (using_graphical_startup) {
+    I_ClearScreenHR();
+    I_UnsetVideoModeHR();
+  }
 }
-
 
 //==========================================================================
 //
@@ -166,13 +151,11 @@ void ST_Done(void)
 //
 //==========================================================================
 
-void ST_UpdateNotches(int notchPosition)
-{
-    int x = ST_PROGRESS_X + notchPosition * ST_NOTCH_WIDTH;
-    int y = ST_PROGRESS_Y;
-    I_SlamBlockHR(x, y, ST_NOTCH_WIDTH, ST_NOTCH_HEIGHT, notchTable);
+void ST_UpdateNotches(int notchPosition) {
+  int x = ST_PROGRESS_X + notchPosition * ST_NOTCH_WIDTH;
+  int y = ST_PROGRESS_Y;
+  I_SlamBlockHR(x, y, ST_NOTCH_WIDTH, ST_NOTCH_HEIGHT, notchTable);
 }
-
 
 //==========================================================================
 //
@@ -180,13 +163,11 @@ void ST_UpdateNotches(int notchPosition)
 //
 //==========================================================================
 
-void ST_UpdateNetNotches(int notchPosition)
-{
-    int x = ST_NETPROGRESS_X + notchPosition * ST_NETNOTCH_WIDTH;
-    int y = ST_NETPROGRESS_Y;
-    I_SlamBlockHR(x, y, ST_NETNOTCH_WIDTH, ST_NETNOTCH_HEIGHT, netnotchTable);
+void ST_UpdateNetNotches(int notchPosition) {
+  int x = ST_NETPROGRESS_X + notchPosition * ST_NETNOTCH_WIDTH;
+  int y = ST_NETPROGRESS_Y;
+  I_SlamBlockHR(x, y, ST_NETNOTCH_WIDTH, ST_NETNOTCH_HEIGHT, netnotchTable);
 }
-
 
 //==========================================================================
 //
@@ -194,30 +175,25 @@ void ST_UpdateNetNotches(int notchPosition)
 //
 //==========================================================================
 
-void ST_Progress(void)
-{
-    // Check for ESC press -- during startup all events eaten here
-    if (I_CheckAbortHR())
-    {
-        I_Quit();
+void ST_Progress(void) {
+  // Check for ESC press -- during startup all events eaten here
+  if (I_CheckAbortHR()) {
+    I_Quit();
+  }
+
+  if (using_graphical_startup) {
+    static int notchPosition = 0;
+
+    if (notchPosition < ST_MAX_NOTCHES) {
+      ST_UpdateNotches(notchPosition);
+      S_StartSound(NULL, SFX_STARTUP_TICK);
+      // I_Sleep(1000);
+      notchPosition++;
     }
+  }
 
-    if (using_graphical_startup)
-    {
-        static int notchPosition = 0;
-
-        if (notchPosition < ST_MAX_NOTCHES)
-        {
-            ST_UpdateNotches(notchPosition);
-            S_StartSound(NULL, SFX_STARTUP_TICK);
-            //I_Sleep(1000);
-            notchPosition++;
-        }
-    }
-
-    printf(".");
+  printf(".");
 }
-
 
 //==========================================================================
 //
@@ -225,37 +201,30 @@ void ST_Progress(void)
 //
 //==========================================================================
 
-void ST_NetProgress(void)
-{
-    printf("*");
+void ST_NetProgress(void) {
+  printf("*");
 
-    if (using_graphical_startup)
-    {
-        static int netnotchPosition = 0;
+  if (using_graphical_startup) {
+    static int netnotchPosition = 0;
 
-        if (netnotchPosition < ST_MAX_NETNOTCHES)
-        {
-            ST_UpdateNetNotches(netnotchPosition);
-            S_StartSound(NULL, SFX_DRIP);
-            netnotchPosition++;
-        }
+    if (netnotchPosition < ST_MAX_NETNOTCHES) {
+      ST_UpdateNetNotches(netnotchPosition);
+      S_StartSound(NULL, SFX_DRIP);
+      netnotchPosition++;
     }
+  }
 }
-
 
 //==========================================================================
 //
 // ST_NetDone - net progress complete
 //
 //==========================================================================
-void ST_NetDone(void)
-{
-    if (using_graphical_startup)
-    {
-        S_StartSound(NULL, SFX_PICKUP_WEAPON);
-    }
+void ST_NetDone(void) {
+  if (using_graphical_startup) {
+    S_StartSound(NULL, SFX_PICKUP_WEAPON);
+  }
 }
-
 
 //==========================================================================
 //
@@ -263,13 +232,12 @@ void ST_NetDone(void)
 //
 //==========================================================================
 
-void ST_Message(const char *message, ...)
-{
-    va_list argptr;
+void ST_Message(const char *message, ...) {
+  va_list argptr;
 
-    va_start(argptr, message);
-    vprintf(message, argptr);
-    va_end(argptr);
+  va_start(argptr, message);
+  vprintf(message, argptr);
+  va_end(argptr);
 }
 
 //==========================================================================
@@ -278,16 +246,13 @@ void ST_Message(const char *message, ...)
 //
 //==========================================================================
 
-void ST_RealMessage(const char *message, ...)
-{
-    va_list argptr;
+void ST_RealMessage(const char *message, ...) {
+  va_list argptr;
 
-    va_start(argptr, message);
-    vprintf(message, argptr);
-    va_end(argptr);
+  va_start(argptr, message);
+  vprintf(message, argptr);
+  va_end(argptr);
 }
-
-
 
 //==========================================================================
 //
@@ -295,16 +260,13 @@ void ST_RealMessage(const char *message, ...)
 //
 //==========================================================================
 
+byte *ST_LoadScreen(void) {
+  int length, lump;
+  byte *buffer;
 
-byte *ST_LoadScreen(void)
-{
-    int length, lump;
-    byte *buffer;
-
-    lump = W_GetNumForName("STARTUP");
-    length = W_LumpLength(lump);
-    buffer = (byte *) Z_Malloc(length, PU_STATIC, NULL);
-    W_ReadLump(lump, buffer);
-    return (buffer);
+  lump = W_GetNumForName("STARTUP");
+  length = W_LumpLength(lump);
+  buffer = (byte *)Z_Malloc(length, PU_STATIC, NULL);
+  W_ReadLump(lump, buffer);
+  return (buffer);
 }
-

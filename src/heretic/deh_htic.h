@@ -23,12 +23,11 @@
 // HHE executable version.  Loading HHE patches is (unfortunately)
 // dependent on the version of the Heretic executable used to make them.
 
-typedef enum
-{
-    deh_hhe_1_0,
-    deh_hhe_1_2,
-    deh_hhe_1_3,
-    deh_hhe_num_versions
+typedef enum {
+  deh_hhe_1_0,
+  deh_hhe_1_2,
+  deh_hhe_1_3,
+  deh_hhe_num_versions
 } deh_hhe_version_t;
 
 // HHE doesn't know about the last two states in the state table, so
@@ -49,4 +48,3 @@ void DEH_SuggestHereticVersion(deh_hhe_version_t version);
 extern deh_hhe_version_t deh_hhe_version;
 
 #endif /* #ifndef DEH_HTIC_H */
-

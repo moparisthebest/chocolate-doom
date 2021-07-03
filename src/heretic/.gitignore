@@ -1,6 +1,1 @@
-Makefile
-Makefile.in
-.deps
-tags
-TAGS
-
+Makefile Makefile.in.deps tags TAGS

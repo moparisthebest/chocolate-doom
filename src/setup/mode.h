@@ -15,8 +15,8 @@
 #ifndef SETUP_MODE_H
 #define SETUP_MODE_H
 
-#include "d_mode.h"
 #include "d_iwad.h"
+#include "d_mode.h"
 
 typedef void (*GameSelectCallback)(void);
 extern GameMission_t gamemission;
@@ -28,4 +28,3 @@ const char *GetGameTitle(void);
 const iwad_t **GetIwads(void);
 
 #endif /* #ifndef SETUP_MODE_H */
-
