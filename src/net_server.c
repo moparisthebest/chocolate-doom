@@ -28,6 +28,7 @@
 #include "m_argv.h"
 #include "m_misc.h"
 
+#include "debug.h"
 #include "net_client.h"
 #include "net_common.h"
 #include "net_defs.h"
@@ -35,15 +36,11 @@
 #include "net_loop.h"
 #include "net_packet.h"
 #include "net_query.h"
-#include "net_sdl.h"
 #include "net_server.h"
 #include "net_structrw.h"
+#include "net_websockets.h"
 
-// How often to refresh our registration with the master server.
-#define MASTER_REFRESH_PERIOD 30 /* twice per minute */
-
-// How often to re-resolve the address of the master server?
-#define MASTER_RESOLVE_PERIOD 8 * 60 * 60 /* 8 hours */
+#include <SDL_net.h>
 
 typedef enum {
   // waiting for the game to be "launched" (key player to press the start
@@ -148,12 +145,6 @@ static net_context_t *server_context;
 static unsigned int sv_gamemode;
 static unsigned int sv_gamemission;
 static net_gamesettings_t sv_settings;
-
-// For registration with master server:
-
-static net_addr_t *master_server = NULL;
-static unsigned int master_refresh_time;
-static unsigned int master_resolve_time;
 
 // receive window
 
@@ -471,6 +462,12 @@ static void NET_SV_AdvanceWindow(void) {
 static net_client_t *NET_SV_FindClient(net_addr_t *addr) {
   int i;
 
+  int nc = 0;
+  for (i = 0; i < MAXNETNODES; ++i) {
+    if (clients[i].active)
+      nc++;
+  }
+
   for (i = 0; i < MAXNETNODES; ++i) {
     if (clients[i].active && clients[i].addr == addr) {
       // found the client
@@ -532,7 +529,10 @@ static void NET_SV_ParseSYN(net_packet_t *packet, net_client_t *client,
   int num_players;
   int i;
 
-  NET_Log("server: processing SYN packet");
+  if (addr->handle) {
+    NET_Log("server: processing SYN packet from %u\n",
+            (*(uint32_t *)(addr->handle)));
+  }
 
   // Read the magic number and check it is the expected one.
   if (!NET_ReadInt32(packet, &magic)) {
@@ -1270,67 +1270,11 @@ void NET_SV_SendQueryResponse(net_addr_t *addr) {
   NET_FreePacket(reply);
 }
 
-static void NET_SV_ParseHolePunch(net_packet_t *packet) {
-  const char *addr_string;
-  net_packet_t *sendpacket;
-  net_addr_t *addr;
-
-  addr_string = NET_ReadString(packet);
-  if (addr_string == NULL) {
-    NET_Log("server: error: hole punch request but no address provided");
-    return;
-  }
-
-  addr = NET_ResolveAddress(server_context, addr_string);
-  if (addr == NULL) {
-    NET_Log("server: error: failed to resolve address: %s", addr_string);
-    return;
-  }
-
-  sendpacket = NET_NewPacket(16);
-  NET_WriteInt16(sendpacket, NET_PACKET_TYPE_NAT_HOLE_PUNCH);
-  NET_SendPacket(addr, sendpacket);
-  NET_FreePacket(sendpacket);
-  NET_ReleaseAddress(addr);
-  NET_Log("server: sent hole punch to %s", addr_string);
-}
-
-static void NET_SV_MasterPacket(net_packet_t *packet) {
-  unsigned int packet_type;
-
-  // Read the packet type
-
-  if (!NET_ReadInt16(packet, &packet_type)) {
-    NET_Log("server: error: no packet type in master server message");
-    return;
-  }
-
-  NET_Log("server: packet from master server; type %d", packet_type);
-  NET_LogPacket(packet);
-
-  switch (packet_type) {
-  case NET_MASTER_PACKET_TYPE_ADD_RESPONSE:
-    NET_Query_AddResponse(packet);
-    break;
-
-  case NET_MASTER_PACKET_TYPE_NAT_HOLE_PUNCH:
-    NET_SV_ParseHolePunch(packet);
-    break;
-  }
-}
-
 // Process a packet received by the server
 
 static void NET_SV_Packet(net_packet_t *packet, net_addr_t *addr) {
   net_client_t *client;
   unsigned int packet_type;
-
-  // Response from master server?
-
-  if (addr != NULL && addr == master_server) {
-    NET_SV_MasterPacket(packet);
-    return;
-  }
 
   // Find which client this packet came from
 
@@ -1579,6 +1523,7 @@ static void NET_SV_RunClient(net_client_t *client) {
     NET_Log("server: client at %s timed out", NET_AddrToString(client->addr));
     NET_SV_BroadcastMessage("Client '%s' timed out and disconnected",
                             client->name);
+    printf("doom: 12, client '%s' timed out and disconnected", client->name);
   }
 
   // Is this client disconnected?
@@ -1663,57 +1608,17 @@ void NET_SV_Init(void) {
   server_initialized = true;
 }
 
-static void UpdateMasterServer(void) {
-  unsigned int now;
-
-  now = I_GetTimeMS();
-
-  // The address of the master server can change. Periodically
-  // re-resolve the master server to update.
-
-  if (now - master_resolve_time > MASTER_RESOLVE_PERIOD * 1000) {
-    net_addr_t *new_addr;
-
-    new_addr = NET_Query_ResolveMaster(server_context);
-    NET_ReleaseAddress(master_server);
-    master_server = new_addr;
-
-    master_resolve_time = now;
-  }
-
-  // Possibly refresh our registration with the master server.
-
-  if (now - master_refresh_time > MASTER_REFRESH_PERIOD * 1000) {
-    NET_Query_AddToMaster(master_server);
-    master_refresh_time = now;
-  }
-}
-
-void NET_SV_RegisterWithMaster(void) {
-  //!
-  // @category net
-  //
-  // When running a server, don't register with the global master server.
-  // Implies -server.
-  //
-
-  if (!M_CheckParm("-privateserver")) {
-    master_server = NET_Query_ResolveMaster(server_context);
-  } else {
-    master_server = NULL;
-  }
-
-  // Send request.
-
-  if (master_server != NULL) {
-    NET_Query_AddToMaster(master_server);
-    master_refresh_time = I_GetTimeMS();
-    master_resolve_time = master_refresh_time;
-  }
-}
-
 // Run server code to check for new packets/send packets as the server
 // requires
+
+// net_addr_t
+//
+// struct _net_addr_s
+// {
+//     net_module_t *module;
+//     int refcount;
+//     void *handle;
+// };
 
 void NET_SV_Run(void) {
   net_addr_t *addr;
@@ -1724,14 +1629,14 @@ void NET_SV_Run(void) {
     return;
   }
 
+  // printf("net_server.c :: while(NET_RecvPacket())\n");
+
   while (NET_RecvPacket(server_context, &addr, &packet)) {
+    // printf("net_server.c :: NET_SV_Packet() %d\n", (IPaddress *)nip->host);
     NET_SV_Packet(packet, addr);
+    // printf("net_server.c :: NET_FreePacket()\n");
     NET_FreePacket(packet);
     NET_ReleaseAddress(addr);
-  }
-
-  if (master_server != NULL) {
-    UpdateMasterServer();
   }
 
   // "Run" any clients that may have things to do, independent of responses
@@ -1739,15 +1644,18 @@ void NET_SV_Run(void) {
 
   for (i = 0; i < MAXNETNODES; ++i) {
     if (clients[i].active) {
+      // printf("net_server.c :: NET_SV_RunClient()\n");
       NET_SV_RunClient(&clients[i]);
     }
   }
 
   switch (server_state) {
   case SERVER_WAITING_LAUNCH:
+    // printf("net_server.c :: SERVER_WAITING_LAUNCH\n");
     break;
 
   case SERVER_WAITING_START:
+    // printf("net_server.c :: CheckStartGame()\n");
     CheckStartGame();
     break;
 
@@ -1755,7 +1663,9 @@ void NET_SV_Run(void) {
     NET_SV_AdvanceWindow();
 
     for (i = 0; i < NET_MAXPLAYERS; ++i) {
+      // printf("net_server.c :: ClientConnected()\n");
       if (sv_players[i] != NULL && ClientConnected(sv_players[i])) {
+        // printf("net_server.c :: NET_SV_CheckResends()\n");
         NET_SV_CheckResends(sv_players[i]);
       }
     }

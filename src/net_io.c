@@ -18,7 +18,9 @@
 
 #include <stdio.h>
 
+#include "debug.h"
 #include "i_system.h"
+#include "m_argv.h"
 #include "net_defs.h"
 #include "net_io.h"
 #include "z_zone.h"
@@ -50,22 +52,6 @@ void NET_AddModule(net_context_t *context, net_module_t *module) {
   ++context->num_modules;
 }
 
-net_addr_t *NET_ResolveAddress(net_context_t *context, const char *addr) {
-  int i;
-  net_addr_t *result;
-
-  for (i = 0; i < context->num_modules; ++i) {
-    result = context->modules[i]->ResolveAddress(addr);
-
-    if (result != NULL) {
-      NET_ReferenceAddress(result);
-      return result;
-    }
-  }
-
-  return NULL;
-}
-
 void NET_SendPacket(net_addr_t *addr, net_packet_t *packet) {
   addr->module->SendPacket(addr, packet);
 }
@@ -85,7 +71,9 @@ boolean NET_RecvPacket(net_context_t *context, net_addr_t **addr,
   // check all modules for new packets
 
   for (i = 0; i < context->num_modules; ++i) {
+    // D(printf("net_io.c :: RecvPacket()\n"));
     if (context->modules[i]->RecvPacket(addr, packet)) {
+      // D(printf("net_io.c :: NET_ReferenceAddress()\n"));
       NET_ReferenceAddress(*addr);
       return true;
     }

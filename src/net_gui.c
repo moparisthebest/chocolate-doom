@@ -34,6 +34,7 @@
 #include "net_gui.h"
 #include "net_query.h"
 #include "net_server.h"
+#include <emscripten/websocket.h>
 
 #include "textscreen.h"
 
@@ -42,7 +43,6 @@ static int old_max_players;
 static txt_label_t *player_labels[NET_MAXPLAYERS];
 static txt_label_t *ip_labels[NET_MAXPLAYERS];
 static txt_label_t *drone_label;
-static txt_label_t *master_msg_label;
 static boolean had_warning;
 
 // Number of players we expect to be in the game. When the number is
@@ -161,50 +161,6 @@ static void UpdateGUI(void) {
   }
 
   TXT_SetWindowAction(window, TXT_HORIZ_RIGHT, startgame);
-}
-
-static void BuildMasterStatusWindow(void) {
-  txt_window_t *master_window;
-
-  master_window = TXT_NewWindow(NULL);
-  master_msg_label = TXT_NewLabel("");
-  TXT_AddWidget(master_window, master_msg_label);
-
-  // This window is here purely for information, so it should be
-  // in the background.
-
-  TXT_LowerWindow(master_window);
-  TXT_SetWindowPosition(master_window, TXT_HORIZ_CENTER, TXT_VERT_CENTER,
-                        TXT_SCREEN_W / 2, TXT_SCREEN_H - 4);
-  TXT_SetWindowAction(master_window, TXT_HORIZ_LEFT, NULL);
-  TXT_SetWindowAction(master_window, TXT_HORIZ_CENTER, NULL);
-  TXT_SetWindowAction(master_window, TXT_HORIZ_RIGHT, NULL);
-}
-
-static void CheckMasterStatus(void) {
-  boolean added;
-
-  if (!NET_Query_CheckAddedToMaster(&added)) {
-    return;
-  }
-
-  if (master_msg_label == NULL) {
-    BuildMasterStatusWindow();
-  }
-
-  if (added) {
-    TXT_SetLabel(
-        master_msg_label,
-        "Your server is now registered with the global master server.\n"
-        "Other players can find your server online.");
-  } else {
-    TXT_SetLabel(
-        master_msg_label,
-        "Failed to register with the master server. Your server is not\n"
-        "publicly accessible. You may need to reconfigure your Internet\n"
-        "router to add a port forward for UDP port 2342. Look up\n"
-        "information on port forwarding online.");
-  }
 }
 
 static void PrintSHA1Digest(const char *s, const byte *digest) {
@@ -363,8 +319,6 @@ void NET_WaitForLaunch(void) {
     UpdateGUI();
     CheckAutoLaunch();
     CheckSHA1Sums();
-    CheckMasterStatus();
-
     TXT_DispatchEvents();
     TXT_DrawDesktop();
 
@@ -374,7 +328,7 @@ void NET_WaitForLaunch(void) {
     if (!net_client_connected) {
       I_Error("Lost connection to server");
     }
-
+    // emscripten_sleep(100);
     TXT_Sleep(100);
   }
 

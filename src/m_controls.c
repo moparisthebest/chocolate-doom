@@ -37,6 +37,9 @@ int key_fire = KEY_RCTRL;
 int key_use = ' ';
 int key_strafe = KEY_RALT;
 int key_speed = KEY_RSHIFT;
+int key_strafe_alt = KEY_RALT;
+int key_speed_alt = KEY_RSHIFT;
+int key_fullscreen = 'f';
 
 //
 // Heretic keyboard controls
@@ -227,6 +230,9 @@ void M_BindBaseControls(void) {
   M_BindIntVariable("key_use", &key_use);
   M_BindIntVariable("key_strafe", &key_strafe);
   M_BindIntVariable("key_speed", &key_speed);
+  M_BindIntVariable("key_strafe_alt", &key_strafe_alt);
+  M_BindIntVariable("key_speed_alt", &key_speed_alt);
+  M_BindIntVariable("key_fullscreen", &key_fullscreen);
 
   M_BindIntVariable("mouseb_fire", &mousebfire);
   M_BindIntVariable("mouseb_strafe", &mousebstrafe);

@@ -18,10 +18,14 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+#include <emscripten.h>
 
 #include "d_event.h"
 #include "d_loop.h"
 #include "d_ticcmd.h"
+#include "debug.h"
 
 #include "i_system.h"
 #include "i_timer.h"
@@ -35,8 +39,11 @@
 #include "net_io.h"
 #include "net_loop.h"
 #include "net_query.h"
-#include "net_sdl.h"
 #include "net_server.h"
+#include "net_websockets.h"
+#include "z_zone.h"
+
+uint32_t instanceUID;
 
 // The complete set of data for a particular tic.
 
@@ -49,7 +56,7 @@ typedef struct {
 // received before we bail out and render a frame anyway.
 // Vanilla Doom used 20 for this value, but we use a smaller value
 // instead for better responsiveness of the menu when we're stuck.
-#define MAX_NETGAME_STALL_TICS 5
+#define MAX_NETGAME_STALL_TICS 2
 
 //
 // gametic is the tic about to (or currently being) run
@@ -239,7 +246,7 @@ static void D_Disconnected(void) {
 
   // disconnected from server
 
-  printf("Disconnected from server.\n");
+  printf("doom: 9, disconnected from server\n");
 }
 
 //
@@ -357,7 +364,6 @@ void D_StartNetGame(net_gamesettings_t *settings,
     BlockUntilStart(settings, callback);
 
     // Read the game settings that were received.
-
     NET_CL_GetSettings(settings);
   }
 
@@ -407,32 +413,15 @@ boolean D_InitNetGame(net_connect_data_t *connect_data) {
   //
 
   if (M_CheckParm("-server") > 0 || M_CheckParm("-privateserver") > 0) {
+    // Server has instanceUID 1
+    instanceUID = 1;
     NET_SV_Init();
     NET_SV_AddModule(&net_loop_server_module);
-    NET_SV_AddModule(&net_sdl_module);
-    NET_SV_RegisterWithMaster();
-
+    NET_SV_AddModule(&net_websockets_module);
     net_loop_client_module.InitClient();
     addr = net_loop_client_module.ResolveAddress(NULL);
     NET_ReferenceAddress(addr);
   } else {
-    //!
-    // @category net
-    //
-    // Automatically search the local LAN for a multiplayer
-    // server and join it.
-    //
-
-    i = M_CheckParm("-autojoin");
-
-    if (i > 0) {
-      addr = NET_FindLANServer();
-
-      if (addr == NULL) {
-        I_Error("No server found on local LAN");
-      }
-    }
-
     //!
     // @arg <address>
     // @category net
@@ -441,18 +430,20 @@ boolean D_InitNetGame(net_connect_data_t *connect_data) {
     // address.
     //
 
+    // Generate UID for this instance - it will be used as the websocketsID
+    srand((unsigned int)time(NULL));
+    instanceUID = rand() % 0xfffe;
+
     i = M_CheckParmWithArgs("-connect", 1);
 
     if (i > 0) {
-      net_sdl_module.InitClient();
-      addr = net_sdl_module.ResolveAddress(myargv[i + 1]);
+      net_websockets_module.InitClient();
+      addr = net_websockets_module.ResolveAddress("1"); // server address is 1!
       NET_ReferenceAddress(addr);
-
-      if (addr == NULL) {
-        I_Error("Unable to resolve '%s'\n", myargv[i + 1]);
-      }
     }
   }
+
+  printf("doom: 8, uid is %d\n", instanceUID);
 
   if (addr != NULL) {
     if (M_CheckParm("-drone") > 0) {
@@ -460,15 +451,12 @@ boolean D_InitNetGame(net_connect_data_t *connect_data) {
     }
 
     if (!NET_CL_Connect(addr, connect_data)) {
-      I_Error("D_InitNetGame: Failed to connect to %s:\n%s\n",
-              NET_AddrToString(addr), net_client_reject_reason);
+      I_Error("doom: 7, failed to connect to %s\n", NET_AddrToString(addr));
     }
 
-    printf("D_InitNetGame: Connected to %s\n", NET_AddrToString(addr));
     NET_ReleaseAddress(addr);
 
     // Wait for launch message received from server.
-
     NET_WaitForLaunch();
 
     result = true;

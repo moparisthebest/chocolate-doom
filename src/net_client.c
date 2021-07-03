@@ -954,6 +954,7 @@ static void NET_CL_SendSYN(net_connect_data_t *data) {
 }
 
 // Connect to a server
+
 boolean NET_CL_Connect(net_addr_t *addr, net_connect_data_t *data) {
   int start_time;
   int last_send_time;
@@ -997,22 +998,18 @@ boolean NET_CL_Connect(net_addr_t *addr, net_connect_data_t *data) {
       last_send_time = nowtime;
     }
 
-    // time out after 5 seconds
-    if (nowtime - start_time > 5000) {
+    // time out after 120 seconds
+    if (nowtime - start_time > 120000) {
       SetRejectReason("No response from server");
       break;
     }
 
-    if (!sent_hole_punch && nowtime - start_time > 2000) {
-      NET_Log("client: no response to SYN, requesting hole punch");
-      NET_RequestHolePunch(client_context, addr);
-      sent_hole_punch = true;
-    }
-
     // run client code
+    // printf("net_client.c :: NET_CL_Run()\n");
     NET_CL_Run();
 
     // run the server, just in case we are doing a loopback connect
+    // printf("net_client.c :: NET_SV_Run()\n");
     NET_SV_Run();
 
     // Don't hog the CPU
@@ -1091,7 +1088,13 @@ void NET_CL_Init(void) {
   // Otherwise, fallback to "Player"
 
   if (net_player_name == NULL) {
-    net_player_name = NET_GetRandomPetName();
+    int i = M_CheckParmWithArgs("-pet", 1);
+    if (i > 0) {
+      net_player_name = myargv[i + 1];
+    } else {
+
+      net_player_name = NET_GetRandomPetName();
+    }
   }
 }
 

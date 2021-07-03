@@ -15,6 +15,7 @@
 // DESCRIPTION:  none
 //
 
+#include <emscripten/websocket.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -303,21 +304,23 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic) {
 
   cmd->consistancy = consistancy[consoleplayer][maketic % BACKUPTICS];
 
-  strafe = gamekeydown[key_strafe] || mousebuttons[mousebstrafe] ||
-           joybuttons[joybstrafe];
+  strafe = gamekeydown[key_strafe] || gamekeydown[key_strafe_alt] ||
+           mousebuttons[mousebstrafe] || joybuttons[joybstrafe];
 
   // fraggle: support the old "joyb_speed = 31" hack which
   // allowed an autorun effect
 
   speed = key_speed >= NUMKEYS || joybspeed >= MAX_JOY_BUTTONS ||
-          gamekeydown[key_speed] || joybuttons[joybspeed];
+          gamekeydown[key_speed] || gamekeydown[key_speed_alt] ||
+          joybuttons[joybspeed];
 
   forward = side = 0;
 
   // use two stage accelerative turning
   // on the keyboard and joystick
   if (joyxmove < 0 || joyxmove > 0 || gamekeydown[key_right] ||
-      gamekeydown[key_left] || mousebuttons[mousebturnright] ||
+      gamekeydown[KEY_RIGHTARROW] || gamekeydown[key_left] ||
+      gamekeydown[KEY_LEFTARROW] || mousebuttons[mousebturnright] ||
       mousebuttons[mousebturnleft])
     turnheld += ticdup;
   else
@@ -330,11 +333,13 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic) {
 
   // let movement keys cancel each other out
   if (strafe) {
-    if (gamekeydown[key_right] || mousebuttons[mousebturnright]) {
+    if (gamekeydown[key_right] || gamekeydown[KEY_RIGHTARROW] ||
+        mousebuttons[mousebturnright]) {
       // fprintf(stderr, "strafe right\n");
       side += sidemove[speed];
     }
-    if (gamekeydown[key_left] || mousebuttons[mousebturnleft]) {
+    if (gamekeydown[key_left] || gamekeydown[KEY_LEFTARROW] ||
+        mousebuttons[mousebturnleft]) {
       //	fprintf(stderr, "strafe left\n");
       side -= sidemove[speed];
     }
@@ -342,11 +347,12 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic) {
       side += sidemove[speed];
     if (joyxmove < 0)
       side -= sidemove[speed];
-
   } else {
-    if (gamekeydown[key_right] || mousebuttons[mousebturnright])
+    if (gamekeydown[key_right] || gamekeydown[KEY_RIGHTARROW] ||
+        mousebuttons[mousebturnright])
       cmd->angleturn -= angleturn[tspeed];
-    if (gamekeydown[key_left] || mousebuttons[mousebturnleft])
+    if (gamekeydown[key_left] || gamekeydown[KEY_LEFTARROW] ||
+        mousebuttons[mousebturnleft])
       cmd->angleturn += angleturn[tspeed];
     if (joyxmove > 0)
       cmd->angleturn -= angleturn[tspeed];
@@ -354,11 +360,11 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic) {
       cmd->angleturn += angleturn[tspeed];
   }
 
-  if (gamekeydown[key_up]) {
+  if (gamekeydown[key_up] || gamekeydown[KEY_UPARROW]) {
     // fprintf(stderr, "up\n");
     forward += forwardmove[speed];
   }
-  if (gamekeydown[key_down]) {
+  if (gamekeydown[key_down] || gamekeydown[KEY_DOWNARROW]) {
     // fprintf(stderr, "down\n");
     forward -= forwardmove[speed];
   }
@@ -376,6 +382,17 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic) {
   if (gamekeydown[key_straferight] || joybuttons[joybstraferight] ||
       mousebuttons[mousebstraferight] || joystrafemove > 0) {
     side += sidemove[speed];
+  }
+
+  // fullscreen
+  if (gamekeydown[key_fullscreen]) {
+    EmscriptenFullscreenChangeEvent fsce;
+    emscripten_get_fullscreen_status(&fsce);
+    if (!fsce.isFullscreen) {
+      printf("doom: 11, entering fullscreen");
+      emscripten_request_fullscreen("#canvas", 1);
+      emscripten_sleep(1000);
+    }
   }
 
   // buttons
@@ -1543,17 +1560,17 @@ void G_InitNew(skill_t skill, int episode, int map) {
   if ( gamemode == retail )
   {
     if (episode > 4)
-      episode = 4;
+  episode = 4;
   }
   else if ( gamemode == shareware )
   {
     if (episode > 1)
-         episode = 1;	// only start episode 1 on shareware
+     episode = 1;	// only start episode 1 on shareware
   }
   else
   {
     if (episode > 3)
-      episode = 3;
+  episode = 3;
   }
   */
 

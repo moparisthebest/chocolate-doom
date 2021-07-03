@@ -20,6 +20,7 @@
 #include <stdlib.h>
 
 #include "d_main.h"
+#include "debug.h"
 #include "doomdef.h"
 #include "doomstat.h"
 #include "g_game.h"
@@ -257,4 +258,5 @@ void D_CheckNetGame(void) {
       printf(".\n");
     }
   }
+  printf("doom: 10, game started\n");
 }

@@ -28,8 +28,11 @@ extern int key_fire;
 extern int key_use;
 extern int key_strafe;
 extern int key_speed;
+extern int key_strafe_alt;
+extern int key_speed_alt;
 
 extern int key_jump;
+extern int key_fullscreen;
 
 extern int key_flyup;
 extern int key_flydown;

@@ -20,11 +20,16 @@
 //
 
 #include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <emscripten.h>
+#include <emscripten/html5.h>
+
 #include "config.h"
+#include "debug.h"
 #include "deh_main.h"
 #include "doomdef.h"
 #include "doomstat.h"
@@ -427,6 +432,15 @@ void D_DoomLoop(void) {
   if (demorecording)
     G_BeginRecording();
 
+  // this needs to be started before video initialization otherwise emscriptem
+  // will complaint with "emscripten_set_main_loop_timing: Cannot set timing
+  // mode for main loop since a main loop does not exist!" see
+  // https://emscripten.org/docs/api_reference/emscripten.h.html#c.emscripten_set_main_loop
+  // and
+  // https://tristanpenman.com/blog/posts/2018/01/08/porting-an-asteroids-clone-to-javascript/#main-loop
+  printf("Running emscripten_set_main_loop()\n");
+  emscripten_set_main_loop(D_RunFrame, 0, 0);
+
   main_loop_started = true;
 
   I_SetWindowTitle(gamedescription);
@@ -440,14 +454,10 @@ void D_DoomLoop(void) {
   V_RestoreBuffer();
   R_ExecuteSetViewSize();
 
-  D_StartGameLoop();
+  D_StartGameLoop(); // it's not a loop, just an initializer
 
   if (testcontrols) {
     wipegamestate = gamestate;
-  }
-
-  while (1) {
-    D_RunFrame();
   }
 }
 
@@ -1123,33 +1133,6 @@ void D_DoomMain(void) {
   //!
   // @category net
   //
-  // Query the Internet master server for a global list of active
-  // servers.
-  //
-
-  if (M_CheckParm("-search")) {
-    NET_MasterQuery();
-    exit(0);
-  }
-
-  //!
-  // @arg <address>
-  // @category net
-  //
-  // Query the status of the server running on the given IP
-  // address.
-  //
-
-  p = M_CheckParmWithArgs("-query", 1);
-
-  if (p) {
-    NET_QueryAddress(myargv[p + 1]);
-    exit(0);
-  }
-
-  //!
-  // @category net
-  //
   // Search the local LAN for running servers.
   //
 
@@ -1632,18 +1615,6 @@ void D_DoomMain(void) {
     autostart = true;
   }
 
-  // Undocumented:
-  // Invoked by setup to test the controls.
-
-  p = M_CheckParm("-testcontrols");
-
-  if (p > 0) {
-    startepisode = 1;
-    startmap = 1;
-    autostart = true;
-    testcontrols = true;
-  }
-
   // Check for load game parameter
   // We do this here and save the slot number, so that the network code
   // can override it or send the load slot to other players.
@@ -1665,27 +1636,20 @@ void D_DoomMain(void) {
     startloadgame = -1;
   }
 
-  DEH_printf("M_Init: Init miscellaneous info.\n");
   M_Init();
 
-  DEH_printf("R_Init: Init DOOM refresh daemon - ");
   R_Init();
 
-  DEH_printf("\nP_Init: Init Playloop state.\n");
   P_Init();
 
-  DEH_printf("S_Init: Setting up sound.\n");
   S_Init(sfxVolume * 8, musicVolume * 8);
 
-  DEH_printf("D_CheckNetGame: Checking network game status.\n");
   D_CheckNetGame();
 
   PrintGameVersion();
 
-  DEH_printf("HU_Init: Setting up heads up display.\n");
   HU_Init();
 
-  DEH_printf("ST_Init: Init status bar.\n");
   ST_Init();
 
   // If Doom II without a MAP01 lump, this is a store demo.

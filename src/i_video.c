@@ -1038,7 +1038,9 @@ static void SetVideoMode(void) {
 
   // In windowed mode, the window can be resized while the game is
   // running.
-  window_flags = SDL_WINDOW_RESIZABLE;
+
+  // SDL_WINDOW_RESIZABLE causes problems with the canvas - commented
+  // window_flags = SDL_WINDOW_RESIZABLE;
 
   // Set the highdpi flag - this makes a big difference on Macs with
   // retina displays, especially when using small window sizes.
